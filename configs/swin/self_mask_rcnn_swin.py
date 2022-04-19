@@ -7,7 +7,7 @@ _base_ = [
 model = dict(
     backbone=dict(
         embed_dim=96,
-        depths=[2, 2, 6, 2],
+        depths=[2, 2, 18, 2],
         num_heads=[3, 6, 12, 24],
         window_size=7,
         ape=False,
@@ -15,6 +15,7 @@ model = dict(
         patch_norm=True,
         use_checkpoint=False
     ),
+    neck=dict(in_channels=[96, 192, 384, 768]),
     roi_head=dict(
         bbox_head=dict(
             num_classes=3
@@ -22,8 +23,8 @@ model = dict(
         mask_head=dict(
             num_classes=3
         )
-    ),
-    neck=dict(in_channels=[96, 192, 384, 768]))
+    )
+)
 
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -32,7 +33,6 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
-    dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='AutoAugment',
          policies=[
              [
@@ -62,25 +62,15 @@ train_pipeline = [
                       keep_ratio=True)
              ]
          ]),
+    dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(type='DefaultFormatBundle'),
-    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
+    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels','gt_masks']),
 ]
 test_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(
-        type='MultiScaleFlipAug',
-        img_scale=(224, 224),
-        flip=False,
-        transforms=[
-            dict(type='Resize', keep_ratio=True),
-            dict(type='RandomFlip'),
-            dict(type='Normalize', **img_norm_cfg),
-            dict(type='Pad', size_divisor=32),
-            dict(type='ImageToTensor', keys=['img']),
-            dict(type='Collect', keys=['img']),
-        ])
+    dict(type='LoadAnnotations', with_bbox=True),
+    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels','gt_masks']),
 ]
 data = dict(
     samples_per_gpu=1,
@@ -105,6 +95,7 @@ data = dict(
         img_prefix='F:/Connect/datasets/val/images/',
         pipeline=test_pipeline
         ))
+
 
 optimizer = dict(_delete_=True, type='AdamW', lr=0.0001, betas=(0.9, 0.999), weight_decay=0.05,
                  paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),

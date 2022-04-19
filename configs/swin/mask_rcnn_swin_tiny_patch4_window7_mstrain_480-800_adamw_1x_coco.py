@@ -15,6 +15,14 @@ model = dict(
         patch_norm=True,
         use_checkpoint=False
     ),
+roi_head=dict(
+        bbox_head=dict(
+            num_classes=3
+        ),
+        mask_head=dict(
+            num_classes=3
+        )
+    ),
     neck=dict(in_channels=[96, 192, 384, 768]))
 
 img_norm_cfg = dict(
@@ -59,7 +67,41 @@ train_pipeline = [
     dict(type='DefaultFormatBundle'),
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels', 'gt_masks']),
 ]
-data = dict(train=dict(pipeline=train_pipeline))
+test_pipeline = [
+    dict(type='LoadImageFromFile'),
+    dict(
+        type='MultiScaleFlipAug',
+        img_scale=(1333, 800),
+        flip=False,
+        transforms=[
+            dict(type='Resize', keep_ratio=True),
+            dict(type='RandomFlip'),
+            dict(type='Normalize', **img_norm_cfg),
+            dict(type='Pad', size_divisor=32),
+            dict(type='ImageToTensor', keys=['img']),
+            dict(type='Collect', keys=['img']),
+        ])
+]
+data = dict(train=dict(
+        # ann_file='F:/Connect/orange_detection_COCO/annotations/voc_train.json',
+        # img_prefix='F:/Connect/orange_detection_COCO/images/',
+        ann_file='F:/Connect/datasets/instance_train.json',
+        img_prefix='F:/Connect/datasets/train/images/',
+        pipeline=train_pipeline),
+    val=dict(
+        # ann_file='F:/Connect/orange_detection_COCO/annotations/voc_test.json',
+        # img_prefix='F:/Connect/orange_detection_COCO/images/',
+        ann_file='F:/Connect/datasets/instance_val.json',
+        img_prefix='F:/Connect/datasets/val/images/',
+        pipeline=test_pipeline
+        ),
+    test=dict(
+        # ann_file='F:/Connect/orange_detection_COCO/annotations/voc_test.json',
+        # img_prefix='F:/Connect/orange_detection_COCO/images/',
+        ann_file='F:/Connect/datasets/instance_val.json',
+        img_prefix='F:/Connect/datasets/val/images/',
+        pipeline=test_pipeline
+        ))
 
 optimizer = dict(_delete_=True, type='AdamW', lr=0.0001, betas=(0.9, 0.999), weight_decay=0.05,
                  paramwise_cfg=dict(custom_keys={'absolute_pos_embed': dict(decay_mult=0.),
